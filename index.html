@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тендеры РК — разбор лотов</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#ffffff; --text:#0f1419; --hint:#707579; --card:#f7f8fa;
+    --line:#e6e8eb; --accent:#2481cc; --ok:#2e9e4f; --warn:#d1461f;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17212b; --text:#f5f5f5; --hint:#8b9aa8; --card:#1f2c38;
+           --line:#283745; --accent:#5eb5f7; --ok:#63d68a; --warn:#ff8f6b; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:0 12px 32px;
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text);
+  }
+  header{padding:14px 2px 10px; position:sticky; top:0; background:var(--bg); z-index:5}
+  h1{font-size:19px; margin:0 0 2px}
+  .sub{color:var(--hint); font-size:13px}
+  .tabs{display:flex; gap:6px; margin:12px 0 4px; overflow-x:auto; padding-bottom:4px}
+  .tab{
+    padding:6px 13px; border-radius:16px; background:var(--card); color:var(--hint);
+    font-size:13px; white-space:nowrap; border:1px solid transparent; cursor:pointer;
+  }
+  .tab.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .lot{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 13px; margin:10px 0; cursor:pointer;
+  }
+  .row{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+  .num{font-size:12px; color:var(--hint); font-variant-numeric:tabular-nums}
+  .badge{font-size:11px; padding:2px 7px; border-radius:8px; background:var(--line); color:var(--hint)}
+  .badge.rep{background:rgba(209,70,31,.15); color:var(--warn)}
+  .name{margin:6px 0 8px; font-weight:600}
+  .sum{font-size:17px; font-weight:700; color:var(--ok); font-variant-numeric:tabular-nums}
+  .meta{color:var(--hint); font-size:13px; margin-top:6px}
+  .meta b{color:var(--text); font-weight:500}
+  .details{display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line)}
+  .lot.open .details{display:block}
+  .sec{margin:12px 0 4px; font-size:12px; letter-spacing:.4px; text-transform:uppercase; color:var(--hint)}
+  .kv{display:flex; justify-content:space-between; padding:3px 0; font-size:14px; gap:12px}
+  .kv span:last-child{font-variant-numeric:tabular-nums; text-align:right}
+  .price{
+    display:flex; justify-content:space-between; gap:10px; padding:7px 0;
+    border-bottom:1px dashed var(--line); font-size:13px;
+  }
+  .price:last-child{border-bottom:0}
+  .price em{font-style:normal; color:var(--hint); font-size:12px}
+  .btns{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
+  .btn{
+    flex:1 1 auto; text-align:center; padding:10px 12px; border-radius:9px;
+    background:var(--accent); color:#fff; text-decoration:none; font-size:14px; font-weight:500;
+    border:0; cursor:pointer;
+  }
+  .btn.sec2{background:var(--card); color:var(--text); border:1px solid var(--line)}
+  .hintbox{
+    background:var(--card); border:1px dashed var(--line); border-radius:10px;
+    padding:10px 12px; color:var(--hint); font-size:13px; margin:14px 0 0;
+  }
+  .tap{color:var(--accent); font-size:12px; margin-top:8px}
+  /* --- экран настроек --- */
+  .screen{display:none}
+  .screen.on{display:block}
+  .group{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 13px; margin:10px 0}
+  .group h3{margin:0 0 10px; font-size:14px}
+  .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .chip{
+    padding:7px 12px; border-radius:16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); font-size:13px; cursor:pointer; user-select:none;
+  }
+  .chip.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .save{
+    position:sticky; bottom:12px; width:100%; padding:14px; border:0; border-radius:11px;
+    background:var(--ok); color:#fff; font-size:16px; font-weight:600; cursor:pointer; margin-top:14px;
+  }
+  .save:disabled{opacity:.5}
+  select{
+    width:100%; padding:9px 10px; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); font-size:14px;
+  }
+  .range{display:flex; gap:10px; margin-top:11px}
+  .range label{flex:1; font-size:12px; color:var(--hint)}
+  .range input{
+    width:100%; margin-top:4px; padding:9px 10px; border-radius:9px;
+    border:1px solid var(--line); background:var(--bg); color:var(--text);
+    font-size:15px; font-variant-numeric:tabular-nums;
+  }
+  .rangeHint{margin-top:8px; font-size:12px; color:var(--hint); min-height:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Тендеры РК</h1>
+  <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
+  <div class="tabs">
+    <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
+    <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
+  </div>
+</header>
+
+<!-- ЭКРАН 1: ЛОТЫ -->
+<div class="screen on" id="screen-lots">
+  <div class="tabs" id="tabs"></div>
+  <div id="list"></div>
+  <div class="hintbox">
+    Данные с портала госзакупок. Нажми на лот — раскроется разбор заказчика.
+  </div>
+</div>
+
+<!-- ЭКРАН 2: НАСТРОЙКИ -->
+<div class="screen" id="screen-cfg">
+  <div class="group">
+    <h3>Раздел поиска</h3>
+    <select id="prof"></select>
+  </div>
+
+  <div class="group">
+    <h3>Что искать</h3>
+    <div class="chips" id="types"></div>
+  </div>
+
+  <div class="group">
+    <h3>Регионы</h3>
+    <div class="chips" id="regions"></div>
+  </div>
+
+  <div class="group">
+    <h3>Сумма закупки</h3>
+    <div class="chips" id="sums"></div>
+    <div class="range">
+      <label>от, ₸
+        <input type="text" inputmode="numeric" id="minSum" placeholder="0"
+               oninput="onRangeInput()">
+      </label>
+      <label>до, ₸
+        <input type="text" inputmode="numeric" id="maxSum" placeholder="без границы"
+               oninput="onRangeInput()">
+      </label>
+    </div>
+    <div class="rangeHint" id="rangeHint"></div>
+  </div>
+
+  <div class="group">
+    <h3>Как присылать</h3>
+    <div class="chips" id="modes"></div>
+  </div>
+
+  <button class="save" id="save" onclick="saveSettings()">Сохранить настройки</button>
+  <div class="hintbox" id="saveHint">
+    Настройки уходят прямо боту — уведомления начнут приходить по ним.
+  </div>
+</div>
+
+<script>
+const LOTS = [{"number": "17394180-1", "name": "Работы по санитарной рубке  лесонасаждений", "sum": 250000.0, "type": "работа", "customer": "Алматы қаласы Білім басқармасының № 180 бөбекжай-балабақшасы коммуналдық мемлекеттік қазын…", "region": "г.Алматы", "end": "30.07.2026 21:18", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17394180", "dossier": {"contracts": 52, "sum": 102065019.92999999, "avg": 1962788.844807692, "suppliers": 43, "top": [{"name": "АО \"Казахтелеком\"", "count": 4}, {"name": "ИП или физлицо (ИИН 900224400528)", "count": 3}, {"name": "ТОО \"Organic Foods\"", "count": 3}], "similar": [{"name": "Услуги санитарные (дезинфекция, дезинсекция, дератизация и аналогичные)", "sum": 79000.0, "date": "2026-03-04"}], "precise": false}, "plans": {"count": 128, "sum": 117265429.81}}, {"number": "17394133-1", "name": "Услуги по оформлению мероприятия гелиевыми шарами и живыми цветами", "sum": 300000.0, "type": "услуга", "customer": "ГУ \"Отдел внутренней политики Аршалынского района\"", "region": "Акмолинская область", "end": "30.07.2026 20:47", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17394133", "dossier": {"contracts": 122, "sum": 60195263.38, "avg": 493403.79819672136, "suppliers": 64, "top": [{"name": "ИП или физлицо (ИИН 831227350758)", "count": 12}, {"name": "ИП или физлицо (ИИН 821003350214)", "count": 10}, {"name": "ИП или физлицо (ИИН 800606302325)", "count": 8}], "similar": [{"name": "Услуги по оформлению мероприятия гелиевыми шарами и живыми цветами", "sum": 300000.0, "date": "2026-06-17"}, {"name": "Услуги по оформлению мероприятия гелиевыми шарами и арками из живых цветов", "sum": 270000.0, "date": "2026-04-30"}, {"name": "Услуги по оформлению мероприятия гелиевыми шарами и арками из живых цветов", "sum": 269999.0, "date": "2026-03-13"}], "precise": true}, "plans": {"count": 105, "sum": 84817519.31}}, {"number": "17393900-1", "name": "Гидропосев газона согласно тех спецификации", "sum": 22500000.0, "type": "работа", "customer": "ГКП на праве хозяйственного ведения \"Алматы тазалық\" акимата города Алматы", "region": "г.Алматы", "end": "30.07.2026 19:20", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17393900", "dossier": {"contracts": 400, "sum": 5236402102.06, "avg": 13091005.255150001, "suppliers": 252, "top": [{"name": "ИП или физлицо (ИИН 901118400465)", "count": 32}, {"name": "ТОО \"VOSTOK MARKET\"", "count": 10}, {"name": "ИП или физлицо (ИИН 900315350235)", "count": 7}], "similar": [], "precise": false}, "plans": {"count": 200, "sum": 1140419741.62}}, {"number": "17393046-1", "name": "05. Услуги по уходу за растениями (саженцы) . (АХО)-623. Закупка производится на основании п. 2 ст. 27 Закона РК «О государственных закупках»", "sum": 900000.0, "type": "услуга", "customer": "РГП НЯЦ РК", "region": "Курчатов", "end": "30.07.2026 17:19", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17393046", "dossier": {"contracts": 400, "sum": 403786688.12, "avg": 1009466.7203, "suppliers": 213, "top": [{"name": "ИП или физлицо (ИИН 680608401565)", "count": 22}, {"name": "ИП или физлицо (ИИН 860525350336)", "count": 17}, {"name": "ИП или физлицо (ИИН 770731401820)", "count": 14}], "similar": [{"name": "01. Инструменты для токарно-фрезерного станка с ЧПУ (з. 554). Закупка производится на основании пп. 1 п. 5 ст. 12 ЗРК О государственных закупках./ /", "sum": 668580.0, "date": "2026-07-28"}, {"name": "04. запчасти для автомобиля  (ТС) -594. Закупка производится на основании пп 3 п. 5 ст. 12 Закона РК «О государственных закупках» ( с/с Маканчи)", "sum": 19200.0, "date": "2026-07-24"}, {"name": "01. автозапчасти  (406-бөлім) – 609. Закупка производится на основании пп 3 п. 5 ст. 12 Закона РК «О государственных закупках».", "sum": 56000.0, "date": "2026-07-24"}], "precise": false}, "plans": {"count": 200, "sum": 61235224.05}}, {"number": "17392431-1", "name": "Услуга по обработке хвойных насаждений (сосен и елей) от грибковых заболеваний (ржавчины)", "sum": 110000.0, "type": "услуга", "customer": "РГУ \"Департамент государственных доходов по Костанайской области Комитета государственных …", "region": "Костанайская область", "end": "30.07.2026 17:00", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17392431", "dossier": {"contracts": 400, "sum": 688846726.17, "avg": 1722116.815425, "suppliers": 187, "top": [{"name": "ТОО \"ЭПК-forfait\" (ЭПК-форфайт)", "count": 65}, {"name": "ИП или физлицо (ИИН 460921401006)", "count": 11}, {"name": "ГКП \"Костанайская теплоэнергетическая компания\" акимата горо…", "count": 7}], "similar": [{"name": "Услуги по электронной обработке документов", "sum": 2114000.0, "date": "2026-04-16"}], "precise": false}, "plans": {"count": 200, "sum": 322135376.69}}, {"number": "17392408-1", "name": "Композиция цветочная и икебана", "sum": 4310345.0, "type": "товар", "customer": "КГУ \"Управление делами акимата Кызылординской области\" аппарата акима Кызылординской облас…", "region": "Кызылординская область", "end": "30.07.2026 16:45", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17392408", "dossier": {"contracts": 363, "sum": 496347519.79, "avg": 1367348.5393663913, "suppliers": 214, "top": [{"name": "ИП или физлицо (ИИН 561107400472)", "count": 9}, {"name": "ИП или физлицо (ИИН 910908401299)", "count": 8}, {"name": "ИП или физлицо (ИИН 650801401767)", "count": 8}], "similar": [], "precise": false}, "plans": {"count": 200, "sum": 175107041.19}}, {"number": "17392281-1", "name": "Приобретение рассада (петунья)", "sum": 45000.0, "type": "товар", "customer": "Коммунальное государственное предприятие на праве хозяйственного ведения «Городская центра…", "region": "Кызылординская область", "end": "30.07.2026 16:34", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17392281", "dossier": {"contracts": 294, "sum": 403937590.59, "avg": 1373937.3829591835, "suppliers": 208, "top": [{"name": "ТОО \"ЭКО-Н Сервис\"", "count": 6}, {"name": "ТОО \"НПО \"ASEM\"", "count": 5}, {"name": "ИП или физлицо (ИИН 980123300894)", "count": 4}], "similar": [{"name": "приобретение рассада однолетняя ", "sum": 133200.0, "date": "2026-04-23"}], "precise": false}, "plans": {"count": 200, "sum": 93243745.11}}, {"number": "17391999-1", "name": "Приобретение материалов для ухода за деревьями центрального парка с.Карахобда Алгинского района", "sum": 8100.0, "type": "товар", "customer": "ГУ \"Аппарат акима Карахобдинского сельского округа Алгинского района Актюбинской области\"", "region": "Актюбинская область", "end": "31.07.2026 09:00", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17391999", "dossier": {"contracts": 65, "sum": 411499630.77, "avg": 6330763.550307692, "suppliers": 39, "top": [{"name": "ТОО \"MEGA TRADE HOLDING\"", "count": 4}, {"name": "ТОО \"ProCommunity Astana Orleu\"", "count": 4}, {"name": "ИП или физлицо (ИИН 931108351157)", "count": 3}], "similar": [{"name": "Флаг из материала габардин с бахромой, кабинетный в комлекте юбка для флага", "sum": 60000.0, "date": "2026-04-20"}, {"name": "Разработка проектных материалов «Проект санитарно-защитной зоны на КБМ (комплексный блок модулей для очистки воды) в селе Кумсай Карахобдинского сельского округа Алгинского района Актюбинской области»", "sum": 275000.0, "date": "2026-03-27"}, {"name": "Разработка проектных материалов «Проект санитарно-защитной зоны на КБМ (комплексный блок модулей для очистки воды) в селе Ерназар Карахобдинского сельского округа Алгинского района Актюбинской области»", "sum": 275000.0, "date": "2026-03-27"}], "precise": false}, "plans": {"count": 53, "sum": 113416888.64}}];
+
+const money = n => (n||0).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' ₸';
+const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+let filter = 'все';
+
+function card(l, i){
+  const d = l.dossier, p = l.plans;
+  let details = '';
+  if (d){
+    details += `<div class="sec">Досье заказчика (12 мес.)</div>
+      <div class="kv"><span>Договоров</span><span>${d.contracts}</span></div>
+      <div class="kv"><span>На сумму</span><span>${money(d.sum)}</span></div>
+      <div class="kv"><span>Средний договор</span><span>${money(d.avg)}</span></div>
+      <div class="kv"><span>Разных поставщиков</span><span>${d.suppliers}</span></div>`;
+    if (d.top && d.top.length){
+      details += `<div class="sec">Чаще всего выигрывают</div>`;
+      d.top.forEach(t => { details += `<div class="kv"><span>${esc(t.name)}</span><span>${t.count} дог.</span></div>`; });
+    }
+    if (d.similar && d.similar.length){
+      details += `<div class="sec">${d.precise ? 'Похожее покупали' : 'Возможно похожее'}</div>`;
+      d.similar.forEach(s => {
+        details += `<div class="price"><span>${esc(s.name)}<br><em>${s.date}</em></span><span>${money(s.sum)}</span></div>`;
+      });
+    }
+  }
+  if (p){
+    details += `<div class="sec">План закупок на год</div>
+      <div class="kv"><span>Позиций запланировано</span><span>${p.count}</span></div>
+      <div class="kv"><span>На сумму</span><span>${money(p.sum)}</span></div>`;
+  }
+  details += `<div class="btns">
+      <a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener">Открыть на госзакупе</a>
+      <button class="btn sec2" onclick="event.stopPropagation()">Напомнить</button>
+    </div>`;
+
+  return `<div class="lot" onclick="this.classList.toggle('open')">
+    <div class="row">
+      <span class="num">№ ${esc(l.number)}</span>
+      <span>
+        <span class="badge">${esc(l.type)}</span>
+        ${l.repeat ? '<span class="badge rep">переобъявлена</span>' : ''}
+      </span>
+    </div>
+    <div class="name">${esc(l.name)}</div>
+    <div class="sum">${money(l.sum)}</div>
+    <div class="meta"><b>${esc(l.customer||'заказчик не указан')}</b></div>
+    <div class="meta">${esc(l.region||'')} · приём до ${esc(l.end)}</div>
+    <div class="tap">Нажми, чтобы раскрыть разбор ▾</div>
+    <div class="details">${details}</div>
+  </div>`;
+}
+
+function render(){
+  const types = ['все', ...new Set(LOTS.map(l => l.type))];
+  document.getElementById('tabs').innerHTML = types
+    .map(t => `<div class="tab ${t===filter?'on':''}" onclick="setFilter('${t}')">${t}</div>`).join('');
+  const shown = LOTS.filter(l => filter==='все' || l.type===filter);
+  document.getElementById('list').innerHTML = shown.map(card).join('') ||
+    '<div class="hintbox">По этому фильтру лотов нет.</div>';
+}
+function setFilter(t){ filter = t; render(); }
+
+/* ================= ЭКРАН НАСТРОЕК ================= */
+
+/* Настройки, впечатанные при сборке страницы — стартовое состояние */
+const PROFILES = [{"name": "Все товары", "types": [1], "regions": ["Астана"], "min_sum": 1000000, "max_sum": 10000000, "delivery": "browse"}, {"name": "Все работы", "types": [2], "regions": [], "min_sum": 10000000, "max_sum": 50000000, "delivery": "browse"}, {"name": "Все услуги", "types": [3], "regions": [], "min_sum": 0, "max_sum": null, "delivery": "browse"}, {"name": "Озеленение (рассылка)", "types": [1, 2, 3], "regions": [], "min_sum": 0, "max_sum": null, "delivery": "instant"}];
+const REGIONS  = [["Абай", "Абай"], ["Акмолинская", "Акмолинская"], ["Актюбинская", "Актюбинская"], ["Алматинская", "Алматинская"], ["Атырауская", "Атырауская"], ["Вост.-Казахстанская", "Восточно-Казахстанская"], ["Жамбылская", "Жамбылская"], ["Жетысу", "Жетісу"], ["Зап.-Казахстанская", "Западно-Казахстанская"], ["Карагандинская", "Карагандинская"], ["Костанайская", "Костанайская"], ["Кызылординская", "Кызылординская"], ["Мангистауская", "Мангистауская"], ["Павлодарская", "Павлодарская"], ["Сев.-Казахстанская", "Северо-Казахстанская"], ["Туркестанская", "Туркестанская"], ["Улытау", "Ұлытау"], ["г. Астана", "Астана"], ["г. Алматы", "г.Алматы"], ["г. Шымкент", "Шымкент"]];
+
+/*
+  Где живут настройки:
+  1) Главный хозяин — БОТ (файл profiles.json рядом с ним). По ним идут уведомления.
+  2) Копия — облако Telegram (CloudStorage): чтобы приложение при открытии
+     показывало актуальные значения, а не те, что были на момент сборки.
+  Приложение само по себе ничего не решает — оно только форма.
+*/
+const CLOUD_KEY = 'profiles_v1';
+
+function cloud(){
+  const c = window.Telegram && Telegram.WebApp && Telegram.WebApp.CloudStorage;
+  return (c && c.setItem && c.getItem) ? c : null;
+}
+
+function applySaved(value){
+  const saved = JSON.parse(value);
+  if (!Array.isArray(saved)) return false;
+  saved.forEach((s, i) => {
+    if (!PROFILES[i]) return;
+    ['types','regions','min_sum','max_sum','delivery'].forEach(k => {
+      if (s[k] !== undefined) PROFILES[i][k] = s[k];
+    });
+  });
+  return true;
+}
+
+function loadFromCloud(done){
+  // Страховка: что бы ни случилось с облаком, экран настроек обязан открыться
+  let finished = false;
+  const finish = ok => { if (!finished){ finished = true; done(ok); } };
+  setTimeout(() => finish(false), 1500);
+
+  const c = cloud();
+  if (!c) { finish(false); return; }
+  try {
+    c.getItem(CLOUD_KEY, (err, value) => {
+      if (err || !value) { finish(false); return; }
+      try { finish(applySaved(value)); } catch(e){ finish(false); }
+    });
+  } catch(e){ finish(false); }
+}
+
+function saveToCloud(){
+  const c = cloud();
+  if (!c) return;
+  const slim = PROFILES.map(p => ({
+    types: p.types, regions: p.regions,
+    min_sum: p.min_sum, max_sum: p.max_sum, delivery: p.delivery
+  }));
+  try { c.setItem(CLOUD_KEY, JSON.stringify(slim), () => {}); } catch(e){}
+}
+
+const TYPES = [[1,'Товары'],[2,'Работы'],[3,'Услуги']];
+const SUMS = [
+  ['any','Любая',0,null],
+  ['lt1','До 1 млн',0,1000000],
+  ['m1_10','1–10 млн',1000000,10000000],
+  ['m10_50','10–50 млн',10000000,50000000],
+  ['gt50','Свыше 50 млн',50000000,null],
+];
+const MODES = [['instant','Сразу'],['digest','Утром сводкой'],['browse','Не присылать']];
+
+let cur = 0;                        // выбранный раздел
+let draft = null;                   // настройки, которые правит пользователь
+
+function showScreen(name){
+  document.getElementById('screen-lots').classList.toggle('on', name==='lots');
+  document.getElementById('screen-cfg').classList.toggle('on', name==='cfg');
+  document.getElementById('nav-lots').classList.toggle('on', name==='lots');
+  document.getElementById('nav-cfg').classList.toggle('on', name==='cfg');
+}
+
+function loadDraft(i){
+  cur = i;
+  const p = PROFILES[i] || {};
+  draft = {
+    types: [...(p.types || [1,2,3])],
+    regions: [...(p.regions || [])],
+    min_sum: p.min_sum || 0,
+    max_sum: p.max_sum === undefined ? null : p.max_sum,
+    delivery: p.delivery || 'instant',
+  };
+  renderCfg();
+}
+
+function chip(label, on, handler){
+  return `<div class="chip ${on?'on':''}" onclick="${handler}">${label}</div>`;
+}
+
+function renderCfg(){
+  document.getElementById('prof').innerHTML = PROFILES
+    .map((p,i) => `<option value="${i}" ${i===cur?'selected':''}>${esc(p.name)}</option>`).join('');
+
+  document.getElementById('types').innerHTML = TYPES
+    .map(([id,n]) => chip(n, draft.types.includes(id), `toggleType(${id})`)).join('');
+
+  document.getElementById('regions').innerHTML =
+    chip('Весь Казахстан', draft.regions.length===0, `clearRegions()`) +
+    REGIONS.map((r,i) => chip(r[0], draft.regions.includes(r[1]), `toggleRegion(${i})`)).join('');
+
+  document.getElementById('sums').innerHTML = SUMS
+    .map(([code,n,mn,mx]) => chip(n, draft.min_sum===mn && draft.max_sum===mx, `setSum('${code}')`)).join('');
+
+  document.getElementById('modes').innerHTML = MODES
+    .map(([code,n]) => chip(n, draft.delivery===code, `setMode('${code}')`)).join('');
+
+  syncRangeInputs();
+}
+
+/* --- произвольный диапазон сумм: «от N» и «до N» (пустое «до» = без границы) --- */
+
+const groupNum = n => (n===null || n===undefined || n==='') ? ''
+  : Number(n).toLocaleString('ru-RU').replace(/ /g,' ');
+const parseNum = s => {
+  const digits = String(s||'').replace(/\D/g,'');
+  return digits === '' ? null : Number(digits);
+};
+
+function syncRangeInputs(){
+  const a = document.getElementById('minSum'), b = document.getElementById('maxSum');
+  if (!a || !b) return;
+  if (document.activeElement !== a) a.value = draft.min_sum ? groupNum(draft.min_sum) : '';
+  if (document.activeElement !== b) b.value = draft.max_sum ? groupNum(draft.max_sum) : '';
+  updateRangeHint();
+}
+
+function updateRangeHint(){
+  const h = document.getElementById('rangeHint');
+  if (!h) return;
+  const mn = draft.min_sum || 0, mx = draft.max_sum;
+  if (!mn && !mx) h.textContent = 'Показываю лоты с любой суммой.';
+  else if (mn && !mx) h.textContent = `Показываю от ${groupNum(mn)} ₸ и выше — верхней границы нет.`;
+  else if (!mn && mx) h.textContent = `Показываю всё до ${groupNum(mx)} ₸.`;
+  else if (mx < mn) h.textContent = 'Верхняя граница меньше нижней — поправь, иначе ничего не найдётся.';
+  else h.textContent = `Показываю от ${groupNum(mn)} до ${groupNum(mx)} ₸.`;
+}
+
+function onRangeInput(){
+  const a = document.getElementById('minSum'), b = document.getElementById('maxSum');
+  draft.min_sum = parseNum(a.value) || 0;
+  draft.max_sum = parseNum(b.value);           // пусто -> null -> без верхней границы
+  const pos = a === document.activeElement ? a.selectionStart : null;
+  a.value = draft.min_sum ? groupNum(draft.min_sum) : '';
+  b.value = draft.max_sum ? groupNum(draft.max_sum) : '';
+  if (pos !== null) a.setSelectionRange(a.value.length, a.value.length);
+  document.getElementById('sums').innerHTML = SUMS
+    .map(([code,n,mn,mx]) => chip(n, draft.min_sum===mn && draft.max_sum===mx, `setSum('${code}')`)).join('');
+  updateRangeHint();
+}
+
+function toggleType(id){
+  const i = draft.types.indexOf(id);
+  if (i >= 0) { if (draft.types.length > 1) draft.types.splice(i,1); }
+  else draft.types.push(id);
+  renderCfg();
+}
+function toggleRegion(i){
+  const m = REGIONS[i][1], j = draft.regions.indexOf(m);
+  if (j >= 0) draft.regions.splice(j,1); else draft.regions.push(m);
+  renderCfg();
+}
+function clearRegions(){ draft.regions = []; renderCfg(); }
+function setSum(code){
+  const s = SUMS.find(x => x[0]===code);
+  draft.min_sum = s[2]; draft.max_sum = s[3]; renderCfg();
+}
+function setMode(code){ draft.delivery = code; renderCfg(); }
+
+function insideTelegram(){
+  return !!(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData);
+}
+
+function saveSettings(){
+  const payload = JSON.stringify({ v:1, profile: cur, settings: draft });
+  const hint = document.getElementById('saveHint');
+  if (insideTelegram()){
+    // 1) запоминаем в облаке Telegram — чтобы приложение открывалось с этими значениями
+    if (PROFILES[cur]) Object.assign(PROFILES[cur], draft);
+    saveToCloud();
+    // 2) отправляем боту — он и есть хозяин настроек, по ним пойдут уведомления
+    Telegram.WebApp.sendData(payload);
+    return;
+  }
+  const p = PROFILES[cur] || {};
+  const names = {instant:'сразу', digest:'утром сводкой', browse:'не присылать'};
+  hint.innerHTML = 'Это предпросмотр в браузере — здесь боту отправить нельзя.<br><br>'
+    + '<b>Внутри Telegram боту ушло бы:</b><br>'
+    + 'раздел «' + esc(p.name || '') + '», '
+    + 'типы ' + draft.types.join(', ') + ', '
+    + 'регионы: ' + (draft.regions.join(', ') || 'весь Казахстан') + ', '
+    + 'сумма ' + draft.min_sum + '–' + (draft.max_sum || '∞') + ', '
+    + 'доставка: ' + (names[draft.delivery] || draft.delivery);
+  hint.style.color = 'var(--accent)';
+}
+
+document.getElementById('prof').addEventListener('change', e => loadDraft(+e.target.value));
+
+render();
+if (window.Telegram && Telegram.WebApp){ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+
+// Сначала пробуем поднять сохранённые настройки из облака Telegram,
+// иначе показываем те, что были впечатаны при сборке страницы.
+loadFromCloud(() => { if (PROFILES.length) loadDraft(0); });
+</script>
+</body>
+</html>
