@@ -92,6 +92,25 @@
     font-size:15px; font-variant-numeric:tabular-nums;
   }
   .rangeHint{margin-top:8px; font-size:12px; color:var(--hint); min-height:16px}
+  /* --- пошаговый мастер --- */
+  .steps{display:flex; gap:6px; margin:12px 0 4px}
+  .stepDot{
+    flex:1; text-align:center; padding:7px 4px; border-radius:9px; cursor:pointer;
+    background:var(--card); border:1px solid var(--line); font-size:12px; color:var(--hint);
+  }
+  .stepDot.on{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600}
+  .stepDot.done{border-color:var(--accent); color:var(--accent)}
+  .step{display:none}
+  .step.on{display:block}
+  .nav{display:flex; gap:10px; margin-top:14px}
+  .btn2{
+    flex:1; padding:12px; border-radius:10px; font-size:15px; cursor:pointer;
+    background:var(--card); color:var(--text); border:1px solid var(--line);
+  }
+  .btn2.main{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600}
+  .btn2:disabled{opacity:.4; cursor:default}
+  .sumRow{display:flex; justify-content:space-between; padding:5px 0; font-size:14px; gap:12px}
+  .sumRow span:last-child{text-align:right; color:var(--hint)}
   textarea{
     width:100%; padding:10px; border-radius:9px; border:1px solid var(--line);
     background:var(--bg); color:var(--text); font-size:15px; font-family:inherit;
@@ -103,7 +122,7 @@
 <header>
   <h1>Тендеры РК</h1>
   <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
-  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 13:46</span></div>
+  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 15:12</span></div>
   <div class="tabs">
     <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
     <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
@@ -128,65 +147,95 @@
   </div>
   <div id="cfgBody">
   <div class="group">
-    <h3>Что настраиваем</h3>
+    <h3>Какой поиск настраиваем</h3>
     <select id="prof"></select>
   </div>
 
-  <div class="group">
-    <h3>Слова поиска</h3>
-    <div class="rangeHint" style="margin:0 0 10px">
-      Свои слова: пиши через запятую. Короткий корень ловит все падежи —
-      «кабел» найдёт и кабель, и кабеля.
+  <div class="steps" id="stepBar"></div>
+
+  <!-- ШАГ 1 -->
+  <div class="step" data-step="1">
+    <div class="group">
+      <h3>Шаг 1. Что покупают</h3>
+      <div class="rangeHint" style="margin:0 0 10px">
+        Можно выбрать одно или несколько. Товар — вещи, работа — стройка и ремонт,
+        услуга — всё остальное.
+      </div>
+      <div class="chips" id="types"></div>
     </div>
-    <textarea id="words" rows="3" placeholder="кабель, провод, металлопрокат"
-              oninput="onWordsInput()"></textarea>
-    <div class="rangeHint" id="wordsHint"></div>
   </div>
 
-  <div class="group">
-    <h3>Не показывать в этом поиске</h3>
-    <div class="rangeHint" style="margin:0 0 10px">
-      Слова-ловушки: если встретятся в названии — лот не придёт.
+  <!-- ШАГ 2 -->
+  <div class="step" data-step="2">
+    <div class="group">
+      <h3>Шаг 2. Что искать</h3>
+      <div class="rangeHint" style="margin:0 0 10px">
+        Слова через запятую. Короткий корень ловит все падежи:
+        «кабел» найдёт и кабель, и кабеля, и кабелю.
+      </div>
+      <textarea id="words" rows="3" placeholder="кабель, провод, металлопрокат"
+                oninput="onWordsInput()"></textarea>
+      <div class="rangeHint" id="wordsHint"></div>
     </div>
-    <textarea id="antiwords" rows="2" placeholder="б/у, аренда"
-              oninput="onWordsInput()"></textarea>
-  </div>
-
-  <div class="group">
-    <h3>Что искать</h3>
-    <div class="chips" id="types"></div>
-  </div>
-
-  <div class="group">
-    <h3>Регионы</h3>
-    <div class="chips" id="regions"></div>
-  </div>
-
-  <div class="group">
-    <h3>Сумма закупки</h3>
-    <div class="chips" id="sums"></div>
-    <div class="range">
-      <label>от, ₸
-        <input type="text" inputmode="numeric" id="minSum" placeholder="0"
-               oninput="onRangeInput()">
-      </label>
-      <label>до, ₸
-        <input type="text" inputmode="numeric" id="maxSum" placeholder="без границы"
-               oninput="onRangeInput()">
-      </label>
+    <div class="group">
+      <h3>Что пропускать</h3>
+      <div class="rangeHint" style="margin:0 0 10px">
+        Слова-ловушки: встретятся в названии — лот не придёт.
+      </div>
+      <textarea id="antiwords" rows="2" placeholder="б/у, аренда"
+                oninput="onWordsInput()"></textarea>
     </div>
-    <div class="rangeHint" id="rangeHint"></div>
   </div>
 
-  <div class="group">
-    <h3>Как присылать</h3>
-    <div class="chips" id="modes"></div>
+  <!-- ШАГ 3 -->
+  <div class="step" data-step="3">
+    <div class="group">
+      <h3>Шаг 3. Где искать</h3>
+      <div class="rangeHint" style="margin:0 0 10px">
+        Ничего не выбрано — ищу по всему Казахстану.
+      </div>
+      <div class="chips" id="regions"></div>
+    </div>
   </div>
 
-  <div class="group">
-    <h3>Не показывать никогда</h3>
-    <div class="rangeHint" style="margin:0 0 10px">Действует на все разделы сразу.</div>
-    <div class="chips" id="stops"></div>
+  <!-- ШАГ 4 -->
+  <div class="step" data-step="4">
+    <div class="group">
+      <h3>Шаг 4. Сумма закупки</h3>
+      <div class="chips" id="sums"></div>
+      <div class="range">
+        <label>от, ₸
+          <input type="text" inputmode="numeric" id="minSum" placeholder="0"
+                 oninput="onRangeInput()">
+        </label>
+        <label>до, ₸
+          <input type="text" inputmode="numeric" id="maxSum" placeholder="без границы"
+                 oninput="onRangeInput()">
+        </label>
+      </div>
+      <div class="rangeHint" id="rangeHint"></div>
+    </div>
+  </div>
+
+  <!-- ШАГ 5 -->
+  <div class="step" data-step="5">
+    <div class="group">
+      <h3>Шаг 5. Как присылать</h3>
+      <div class="chips" id="modes"></div>
+    </div>
+    <div class="group">
+      <h3>Не показывать никогда</h3>
+      <div class="rangeHint" style="margin:0 0 10px">
+        Общий стоп-лист: действует сразу на все поиски.
+      </div>
+      <div class="chips" id="stops"></div>
+    </div>
+    <div class="group" id="summary"></div>
+  </div>
+
+  <div class="nav">
+    <button class="btn2" id="prevBtn" onclick="goStep(step-1)">← Назад</button>
+    <button class="btn2 main" id="nextBtn" onclick="goStep(step+1)">Далее →</button>
   </div>
 
   <button class="save" id="save" onclick="saveSettings()">Сохранить настройки</button>
@@ -197,7 +246,7 @@
 </div>
 
 <script>
-const LOTS = [{"number": "17397482-1", "name": "Работы по ремонту/благоустройству рритории", "sum": 400000.0, "type": "работа", "customer": "КГУ \"Общеобразовательная школа №151\"", "region": "г.Алматы", "end": "31.07.2026 13:05", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17397482", "dossier": {"contracts": 112, "sum": 136980172.99, "avg": 1223037.2588392857, "suppliers": 89, "top": [{"name": "ИП или физлицо (ИИН 860820401177)", "count": 4}, {"name": "ОО \"ОИ TezProject\"", "count": 4}, {"name": "ИП или физлицо (ИИН 031021601189)", "count": 3}], "similar": [{"name": "Работы по текущему ремонту отдельных элементов нежилых зданий/сооружений/помещений", "sum": 1900000.0, "date": "2026-07-27"}, {"name": "Частичный ремонт помещений", "sum": 644444.0, "date": "2026-03-03"}, {"name": "Услуги по ремонту и заправке картриджей", "sum": 344000.0, "date": "2026-01-26"}], "precise": false}, "plans": {"count": 182, "sum": 269614774.66}}, {"number": "17397139-1", "name": "Проектно-изыскательские работы по проекту «Благоустройство ул.Центральная протяженностью 2 км,с.Заречное,г.Алатау»", "sum": 15605199.0, "type": "работа", "customer": "ГУ \"Аппарат акима города Алатау\"", "region": "Алматинская область", "end": "07.08.2026 12:50", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17397139", "dossier": {"contracts": 153, "sum": 329292063.97, "avg": 2152235.7122222222, "suppliers": 121, "top": [{"name": "ИП или физлицо (ИИН 890627301181)", "count": 5}, {"name": "ИП или физлицо (ИИН 771228300379)", "count": 4}, {"name": "ТОО \"МегаМонтажПромстройИнвест\"", "count": 4}], "similar": [], "precise": false}, "plans": {"count": 180, "sum": 515411012.15000004}}, {"number": "17396658-1", "name": "Обрезка и с пил деревьев", "sum": 420000.0, "type": "работа", "customer": "КГУ \"Школа-лицей №143 имени Суюнбая\" Управления образования города Алматы", "region": "г.Алматы", "end": "31.07.2026 12:11", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17396658", "dossier": {"contracts": 89, "sum": 188795520.05, "avg": 2121297.9780898876, "suppliers": 77, "top": [{"name": "ИП или физлицо (ИИН 840113401350)", "count": 6}, {"name": "ООИ \"Жарқын бағыт\"", "count": 2}, {"name": "ИП или физлицо (ИИН 990421300965)", "count": 2}], "similar": [], "precise": false}, "plans": {"count": 79, "sum": 214117861.47}}, {"number": "17396205-1", "name": "Приобретение газонокосилка бензиновая", "sum": 50000.0, "type": "товар", "customer": "КГУ \"Общеобразовательная школа №3\" Отдела образования по Мунайлинскому району Управления о…", "region": "Мангистауская область", "end": "31.07.2026 11:15", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17396205", "dossier": {"contracts": 222, "sum": 319981257.29, "avg": 1441357.01481982, "suppliers": 161, "top": [{"name": "ИП или физлицо (ИИН 620218401702)", "count": 14}, {"name": "ИП или физлицо (ИИН 820330402008)", "count": 4}, {"name": "ИП или физлицо (ИИН 950401351636)", "count": 4}], "similar": [{"name": "Бензин марки АИ -92", "sum": 360000.0, "date": "2026-02-23"}], "precise": false}, "plans": {"count": 200, "sum": 472331307.25}}, {"number": "17396118-1", "name": "Услуги по поливу зеленых насаждений (подача летней воды по водопроводу)", "sum": 43103.44, "type": "услуга", "customer": "КГКП «Сельский дом культуры «Сарытогай»", "region": "Сарытогай", "end": "31.07.2026 11:15", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17396118", "dossier": {"contracts": 25, "sum": 1462420.09, "avg": 58496.80360000001, "suppliers": 16, "top": [{"name": "ИП или физлицо (ИИН 810709401513)", "count": 5}, {"name": "ИП или физлицо (ИИН 651114400549)", "count": 3}, {"name": "ИП или физлицо (ИИН 890103400713)", "count": 2}], "similar": [], "precise": false}, "plans": {"count": 17, "sum": 5245176.47}}, {"number": "17396081-1", "name": "Работы по санитарной обрезке деревьев на территории Кобдинской районной больницы", "sum": 1724137.93, "type": "работа", "customer": "ГКП \"Кобдинская районная больница\" на праве хозяйственного ведения государственного учрежд…", "region": "Актюбинская область", "end": "31.07.2026 11:12", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17396081", "dossier": {"contracts": 286, "sum": 256885763.47, "avg": 898201.9701748252, "suppliers": 154, "top": [{"name": "ИП или физлицо (ИИН 540721400830)", "count": 12}, {"name": "НАО \"ЗКМУ\"", "count": 11}, {"name": "Некоммерческое акционерное общество «Государственная корпора…", "count": 10}], "similar": [{"name": "Приобретение санитарного автотранспорта", "sum": 13318103.0, "date": "2026-04-06"}, {"name": "Услуги охраны территории", "sum": 3581845.22, "date": "2026-02-03"}, {"name": "Услуги охраны территории", "sum": 8300000.0, "date": "2026-01-07"}], "precise": false}, "plans": {"count": 200, "sum": 194188369.05}}, {"number": "17395652-1", "name": "Текущий ремонт благоустройства школы гимназий №1 по адресу г.Тараз, ул. Александра Пушкина, 15", "sum": 59946659.0, "type": "работа", "customer": "КГУ \"Управление государственных закупок акимата Жамбылской области\"", "region": "Жамбылская область", "end": "07.08.2026 10:25", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17395652", "dossier": {"contracts": 40, "sum": 9774596.16, "avg": 244364.904, "suppliers": 33, "top": [{"name": "ИП или физлицо (ИИН 890627301181)", "count": 3}, {"name": "АО \"Казахтелеком\"", "count": 3}, {"name": "ИП или физлицо (ИИН 740612401194)", "count": 2}], "similar": [], "precise": false}, "plans": {"count": 30, "sum": 6310313.0}}, {"number": "17395578-1", "name": "Вывоз стихийных свалок", "sum": 4741379.31, "type": "услуга", "customer": "ГУ \"Аппарат акима города Шар Жарминского района области Абай\"", "region": "г.Шар", "end": "31.07.2026 10:08", "repeat": false, "url": "https://goszakup.gov.kz/ru/announce/index/17395578", "dossier": {"contracts": 95, "sum": 603833953.6, "avg": 6356146.88, "suppliers": 49, "top": [{"name": "Некоммерческое акционерное общество «Государственная корпора…", "count": 12}, {"name": "КГП \"Горводхоз\" акимата Жарминского района", "count": 9}, {"name": "ТОО \"PetroRetail\"", "count": 6}], "similar": [{"name": "Вывоз стихийных свалок", "sum": 4741379.31, "date": "2026-07-29"}, {"name": "Вывоз стихийных свалок", "sum": 1785714.29, "date": "2025-09-02"}], "precise": true}, "plans": {"count": 87, "sum": 883567608.0500001}}];
+const LOTS = [];
 
 const money = n => (n||0).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' ₸';
 const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -340,6 +389,7 @@ function loadDraft(i){
   if (w) w.value = draft.keywords.join(', ');
   if (a) a.value = draft.anti_words.join(', ');
   renderCfg();
+  goStep(1);          // новый раздел открываем с первого шага
 }
 
 function chip(label, on, handler){
@@ -368,6 +418,56 @@ function renderCfg(){
     .map(([key,label]) => chip(label, stopOn.includes(key), `toggleStop('${key}')`)).join('');
 
   syncRangeInputs();
+  if (step === STEP_NAMES.length) paintSummary();
+}
+
+/* ---- пошаговый мастер: ведём за руку, но даём прыгать по шагам ---- */
+
+const STEP_NAMES = ['Тип', 'Слова', 'Регион', 'Сумма', 'Доставка'];
+let step = 1;
+
+function goStep(n){
+  step = Math.max(1, Math.min(STEP_NAMES.length, n));
+  paintSteps();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function paintSteps(){
+  document.getElementById('stepBar').innerHTML = STEP_NAMES
+    .map((name, i) => {
+      const n = i + 1;
+      const cls = n === step ? 'stepDot on' : (n < step ? 'stepDot done' : 'stepDot');
+      return `<div class="${cls}" onclick="goStep(${n})">${n}. ${name}</div>`;
+    }).join('');
+
+  document.querySelectorAll('.step').forEach(el => {
+    el.classList.toggle('on', +el.dataset.step === step);
+  });
+
+  const last = step === STEP_NAMES.length;
+  document.getElementById('prevBtn').disabled = step === 1;
+  document.getElementById('nextBtn').style.display = last ? 'none' : '';
+  document.getElementById('save').style.display = last ? '' : 'none';
+  document.getElementById('saveHint').style.display = last ? '' : 'none';
+  if (last) paintSummary();
+}
+
+function paintSummary(){
+  const box = document.getElementById('summary');
+  if (!box || !draft) return;
+  const typeNames = TYPES.filter(t => draft.types.includes(t[0])).map(t => t[1]);
+  const money = n => (n || 0).toLocaleString('ru-RU');
+  let sum = 'любая';
+  if (draft.min_sum && draft.max_sum) sum = 'от ' + money(draft.min_sum) + ' до ' + money(draft.max_sum) + ' ₸';
+  else if (draft.min_sum) sum = 'от ' + money(draft.min_sum) + ' ₸';
+  else if (draft.max_sum) sum = 'до ' + money(draft.max_sum) + ' ₸';
+  const modeName = (MODES.find(m => m[0] === draft.delivery) || ['', ''])[1];
+  box.innerHTML = '<h3>Проверь перед сохранением</h3>'
+    + `<div class="sumRow"><span>Тип</span><span>${esc(typeNames.join(', ') || '—')}</span></div>`
+    + `<div class="sumRow"><span>Слова</span><span>${esc(draft.keywords.join(', ') || 'весь раздел')}</span></div>`
+    + `<div class="sumRow"><span>Регионы</span><span>${esc(draft.regions.join(', ') || 'весь Казахстан')}</span></div>`
+    + `<div class="sumRow"><span>Сумма</span><span>${esc(sum)}</span></div>`
+    + `<div class="sumRow"><span>Доставка</span><span>${esc(modeName)}</span></div>`;
 }
 
 function splitWords(value){
