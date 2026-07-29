@@ -122,7 +122,7 @@
 <header>
   <h1>Тендеры РК</h1>
   <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
-  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 15:53</span></div>
+  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 16:18</span></div>
   <div class="tabs">
     <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
     <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
@@ -149,6 +149,13 @@
   <div class="group">
     <h3>Какой поиск настраиваем</h3>
     <select id="prof"></select>
+    <div class="range" style="margin-top:11px">
+      <label style="flex:1">Название — можно своё: ТОО «Ромашка», Склад, Тендеры Алматы
+        <input type="text" id="profName" placeholder="Название поиска"
+               oninput="onNameInput()">
+      </label>
+    </div>
+    <div class="rangeHint" id="nameHint"></div>
   </div>
 
   <div class="steps" id="stepBar"></div>
@@ -379,8 +386,10 @@ function showScreen(name){
 
 function loadDraft(i){
   cur = i;
-  const p = PROFILES[i] || {};
+  const isNew = (i === 'new');
+  const p = isNew ? {} : (PROFILES[i] || {});
   draft = {
+    name: isNew ? '' : (p.name || ''),
     types: [...(p.types || [1,2,3])],
     regions: [...(p.regions || [])],
     min_sum: p.min_sum || 0,
@@ -391,10 +400,27 @@ function loadDraft(i){
   };
   const w = document.getElementById('words');
   const a = document.getElementById('antiwords');
+  const nm = document.getElementById('profName');
   if (w) w.value = draft.keywords.join(', ');
   if (a) a.value = draft.anti_words.join(', ');
+  if (nm) nm.value = draft.name;
   renderCfg();
+  onNameInput();
   goStep(1);          // новый раздел открываем с первого шага
+}
+
+function onNameInput(){
+  const nm = document.getElementById('profName');
+  const hint = document.getElementById('nameHint');
+  if (!nm || !draft) return;
+  draft.name = nm.value.trim();
+  if (cur === 'new'){
+    hint.textContent = draft.name
+      ? 'Создам новый поиск с этим названием.'
+      : 'Придумай название — по нему будешь узнавать поиск в списке.';
+  } else {
+    hint.textContent = draft.name ? 'Переименую при сохранении.' : 'Название не может быть пустым.';
+  }
 }
 
 function chip(label, on, handler){
@@ -402,8 +428,11 @@ function chip(label, on, handler){
 }
 
 function renderCfg(){
-  document.getElementById('prof').innerHTML = PROFILES
-    .map((p,i) => `<option value="${i}" ${i===cur?'selected':''}>${esc(p.name)}</option>`).join('');
+  const opts = PROFILES
+    .map((p,i) => `<option value="${i}" ${i===cur?'selected':''}>${i+1}. ${esc(p.name)}</option>`)
+    .join('');
+  document.getElementById('prof').innerHTML = opts
+    + `<option value="new" ${cur === 'new' ? 'selected' : ''}>➕ Новый поиск</option>`;
 
 
   document.getElementById('types').innerHTML = TYPES
@@ -581,11 +610,26 @@ function insideTelegram(){
 
 function saveSettings(){
   onWordsInput();   // подхватываем то, что человек только что напечатал
-  const payload = JSON.stringify({ v:1, profile: cur, settings: draft, stop_groups: stopOn });
+  onNameInput();
+  const isNew = (cur === 'new');
+  if (isNew && !draft.name){
+    document.getElementById('nameHint').textContent =
+      'Сначала придумай название нового поиска.';
+    document.getElementById('nameHint').style.color = 'var(--warn)';
+    goStep(1);
+    return;
+  }
+  const payload = JSON.stringify({
+    v: 1,
+    profile: isNew ? -1 : cur,
+    new: isNew,
+    settings: draft,
+    stop_groups: stopOn,
+  });
   const hint = document.getElementById('saveHint');
   const w = tgApp();
   if (insideTelegram() && w && w.sendData){
-    if (PROFILES[cur]) Object.assign(PROFILES[cur], draft);
+    if (!isNew && PROFILES[cur]) Object.assign(PROFILES[cur], draft);
     // Настройки уходят боту — он их хозяин, по ним пойдут уведомления
     try {
       w.sendData(payload);
@@ -611,7 +655,10 @@ function saveSettings(){
   hint.style.color = 'var(--accent)';
 }
 
-document.getElementById('prof').addEventListener('change', e => loadDraft(+e.target.value));
+document.getElementById('prof').addEventListener('change', e => {
+  const v = e.target.value;
+  loadDraft(v === 'new' ? 'new' : +v);
+});
 
 render();
 if (window.Telegram && Telegram.WebApp){ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
