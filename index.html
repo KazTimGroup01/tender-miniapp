@@ -80,6 +80,11 @@
     background:var(--ok); color:#fff; font-size:16px; font-weight:600; cursor:pointer; margin-top:14px;
   }
   .save:disabled{opacity:.5}
+  .danger{
+    width:100%; padding:12px; border-radius:11px; margin-top:10px; cursor:pointer;
+    background:transparent; color:var(--warn); border:1px solid var(--warn); font-size:15px;
+  }
+  .danger.armed{background:var(--warn); color:#fff; font-weight:600}
   select{
     width:100%; padding:9px 10px; border-radius:9px; border:1px solid var(--line);
     background:var(--bg); color:var(--text); font-size:14px;
@@ -122,7 +127,7 @@
 <header>
   <h1>Тендеры РК</h1>
   <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
-  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 16:18</span></div>
+  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 16:39</span></div>
   <div class="tabs">
     <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
     <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
@@ -246,6 +251,7 @@
   </div>
 
   <button class="save" id="save" onclick="saveSettings()">Сохранить настройки</button>
+  <button class="danger" id="delBtn" onclick="deleteProfile()">🗑 Удалить этот поиск</button>
   <div class="hintbox" id="saveHint">
     Настройки уходят прямо боту — уведомления начнут приходить по ним.
   </div>
@@ -404,9 +410,43 @@ function loadDraft(i){
   if (w) w.value = draft.keywords.join(', ');
   if (a) a.value = draft.anti_words.join(', ');
   if (nm) nm.value = draft.name;
+  delArmed = false;                       // при смене поиска сбрасываем «взвод»
+  const del = document.getElementById('delBtn');
+  if (del){ del.classList.remove('armed'); del.textContent = '🗑 Удалить этот поиск'; }
   renderCfg();
   onNameInput();
   goStep(1);          // новый раздел открываем с первого шага
+}
+
+/* Удаление в два нажатия: первое «взводит» кнопку, второе удаляет.
+   Так поиск нельзя стереть случайным касанием. */
+let delArmed = false;
+
+function deleteProfile(){
+  const btn = document.getElementById('delBtn');
+  if (cur === 'new'){ loadDraft(0); return; }
+  const name = (PROFILES[cur] || {}).name || '';
+
+  if (!delArmed){
+    delArmed = true;
+    btn.classList.add('armed');
+    btn.textContent = `Точно удалить «${name}»? Нажми ещё раз`;
+    setTimeout(() => {          // передумал — кнопка сама остынет
+      if (!delArmed) return;
+      delArmed = false;
+      btn.classList.remove('armed');
+      btn.textContent = '🗑 Удалить этот поиск';
+    }, 6000);
+    return;
+  }
+
+  const w = tgApp();
+  const payload = JSON.stringify({ v:1, action:'delete', profile: cur });
+  if (insideTelegram() && w && w.sendData){
+    try { w.sendData(payload); return; } catch(e){}
+  }
+  document.getElementById('saveHint').textContent =
+    'Это предпросмотр в браузере. Внутри Telegram поиск «' + name + '» был бы удалён.';
 }
 
 function onNameInput(){
@@ -483,6 +523,9 @@ function paintSteps(){
   document.getElementById('nextBtn').style.display = last ? 'none' : '';
   document.getElementById('save').style.display = last ? '' : 'none';
   document.getElementById('saveHint').style.display = last ? '' : 'none';
+  // Удалять можно только существующий поиск и только на последнем шаге
+  const del = document.getElementById('delBtn');
+  if (del) del.style.display = (last && cur !== 'new') ? '' : 'none';
   if (last) paintSummary();
 }
 
