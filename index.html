@@ -92,13 +92,18 @@
     font-size:15px; font-variant-numeric:tabular-nums;
   }
   .rangeHint{margin-top:8px; font-size:12px; color:var(--hint); min-height:16px}
+  textarea{
+    width:100%; padding:10px; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); font-size:15px; font-family:inherit;
+    resize:vertical; line-height:1.4;
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>Тендеры РК</h1>
   <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
-  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 13:36</span></div>
+  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 13:46</span></div>
   <div class="tabs">
     <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
     <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
@@ -125,7 +130,26 @@
   <div class="group">
     <h3>Что настраиваем</h3>
     <select id="prof"></select>
-    <div class="rangeHint" id="profNote" style="margin-top:8px"></div>
+  </div>
+
+  <div class="group">
+    <h3>Слова поиска</h3>
+    <div class="rangeHint" style="margin:0 0 10px">
+      Свои слова: пиши через запятую. Короткий корень ловит все падежи —
+      «кабел» найдёт и кабель, и кабеля.
+    </div>
+    <textarea id="words" rows="3" placeholder="кабель, провод, металлопрокат"
+              oninput="onWordsInput()"></textarea>
+    <div class="rangeHint" id="wordsHint"></div>
+  </div>
+
+  <div class="group">
+    <h3>Не показывать в этом поиске</h3>
+    <div class="rangeHint" style="margin:0 0 10px">
+      Слова-ловушки: если встретятся в названии — лот не придёт.
+    </div>
+    <textarea id="antiwords" rows="2" placeholder="б/у, аренда"
+              oninput="onWordsInput()"></textarea>
   </div>
 
   <div class="group">
@@ -308,7 +332,13 @@ function loadDraft(i){
     min_sum: p.min_sum || 0,
     max_sum: p.max_sum === undefined ? null : p.max_sum,
     delivery: p.delivery || 'instant',
+    keywords: [...(p.keywords || [])],
+    anti_words: [...(p.anti_words || [])],
   };
+  const w = document.getElementById('words');
+  const a = document.getElementById('antiwords');
+  if (w) w.value = draft.keywords.join(', ');
+  if (a) a.value = draft.anti_words.join(', ');
   renderCfg();
 }
 
@@ -320,9 +350,6 @@ function renderCfg(){
   document.getElementById('prof').innerHTML = PROFILES
     .map((p,i) => `<option value="${i}" ${i===cur?'selected':''}>${esc(p.name)}</option>`).join('');
 
-  const note = document.getElementById('profNote');
-  const words = (PROFILES[cur] && PROFILES[cur].keywords) || [];
-  note.textContent = words.length ? ('Ищу по словам: ' + words.join(', ')) : '';
 
   document.getElementById('types').innerHTML = TYPES
     .map(([id,n]) => chip(n, draft.types.includes(id), `toggleType(${id})`)).join('');
@@ -341,6 +368,24 @@ function renderCfg(){
     .map(([key,label]) => chip(label, stopOn.includes(key), `toggleStop('${key}')`)).join('');
 
   syncRangeInputs();
+}
+
+function splitWords(value){
+  return (value || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+function onWordsInput(){
+  draft.keywords = splitWords(document.getElementById('words').value);
+  draft.anti_words = splitWords(document.getElementById('antiwords').value);
+  const hint = document.getElementById('wordsHint');
+  if (!draft.keywords.length){
+    hint.textContent = 'Без слов раздел показывает всё подряд — только по запросу.';
+  } else {
+    const short = draft.keywords.filter(w => w.length < 4);
+    hint.textContent = short.length
+      ? 'Слишком короткие слова дадут много лишнего: ' + short.join(', ')
+      : 'Слов: ' + draft.keywords.length;
+  }
 }
 
 function toggleStop(key){
@@ -423,6 +468,7 @@ function insideTelegram(){
 }
 
 function saveSettings(){
+  onWordsInput();   // подхватываем то, что человек только что напечатал
   const payload = JSON.stringify({ v:1, profile: cur, settings: draft, stop_groups: stopOn });
   const hint = document.getElementById('saveHint');
   const w = tgApp();
