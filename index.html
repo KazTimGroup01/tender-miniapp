@@ -122,7 +122,7 @@
 <header>
   <h1>Тендеры РК</h1>
   <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
-  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 15:12</span></div>
+  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 15:25</span></div>
   <div class="tabs">
     <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
     <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
@@ -515,11 +515,18 @@ function updateRangeHint(){
   const h = document.getElementById('rangeHint');
   if (!h) return;
   const mn = draft.min_sum || 0, mx = draft.max_sum;
+  h.style.color = '';
   if (!mn && !mx) h.textContent = 'Показываю лоты с любой суммой.';
   else if (mn && !mx) h.textContent = `Показываю от ${groupNum(mn)} ₸ и выше — верхней границы нет.`;
   else if (!mn && mx) h.textContent = `Показываю всё до ${groupNum(mx)} ₸.`;
-  else if (mx < mn) h.textContent = 'Верхняя граница меньше нижней — поправь, иначе ничего не найдётся.';
-  else h.textContent = `Показываю от ${groupNum(mn)} до ${groupNum(mx)} ₸.`;
+  else if (mx < mn) {
+    h.textContent = 'Верхняя граница меньше нижней — так ничего не найдётся.';
+    h.style.color = 'var(--warn)';
+  } else if (mx === mn) {
+    h.textContent = 'Обе границы одинаковые — найдутся только лоты ровно на эту сумму, '
+                  + 'а таких почти не бывает. Убери верхнюю границу или раздвинь диапазон.';
+    h.style.color = 'var(--warn)';
+  } else h.textContent = `Показываю от ${groupNum(mn)} до ${groupNum(mx)} ₸.`;
 }
 
 function onRangeInput(){
