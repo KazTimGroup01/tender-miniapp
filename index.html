@@ -127,7 +127,7 @@
 <header>
   <h1>Тендеры РК</h1>
   <div class="sub">Лоты с разбором заказчика и настройка уведомлений</div>
-  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 16:39</span></div>
+  <div class="sub" style="margin-top:2px; font-size:12px">Данные с портала: <span id="stamp">29.07.2026, 16:45</span></div>
   <div class="tabs">
     <div class="tab on" id="nav-lots" onclick="showScreen('lots')">Лоты</div>
     <div class="tab" id="nav-cfg" onclick="showScreen('cfg')">Настройки</div>
@@ -161,6 +161,7 @@
       </label>
     </div>
     <div class="rangeHint" id="nameHint"></div>
+    <button class="danger" id="delBtn" onclick="deleteProfile()">🗑 Удалить этот поиск</button>
   </div>
 
   <div class="steps" id="stepBar"></div>
@@ -251,7 +252,6 @@
   </div>
 
   <button class="save" id="save" onclick="saveSettings()">Сохранить настройки</button>
-  <button class="danger" id="delBtn" onclick="deleteProfile()">🗑 Удалить этот поиск</button>
   <div class="hintbox" id="saveHint">
     Настройки уходят прямо боту — уведомления начнут приходить по ним.
   </div>
@@ -523,9 +523,9 @@ function paintSteps(){
   document.getElementById('nextBtn').style.display = last ? 'none' : '';
   document.getElementById('save').style.display = last ? '' : 'none';
   document.getElementById('saveHint').style.display = last ? '' : 'none';
-  // Удалять можно только существующий поиск и только на последнем шаге
+  // Кнопка удаления живёт рядом со списком поисков — на первом шаге
   const del = document.getElementById('delBtn');
-  if (del) del.style.display = (last && cur !== 'new') ? '' : 'none';
+  if (del) del.style.display = (step === 1 && cur !== 'new') ? '' : 'none';
   if (last) paintSummary();
 }
 
