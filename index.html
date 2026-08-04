@@ -162,6 +162,8 @@
     </div>
     <div class="rangeHint" id="nameHint"></div>
     <button class="danger" id="delBtn" onclick="deleteProfile()">🗑 Удалить этот поиск</button>
+    <button class="danger armed" id="applyDel" style="display:none" onclick="applyDeletes()"></button>
+    <div class="rangeHint" id="delHint"></div>
   </div>
 
   <div class="steps" id="stepBar"></div>
@@ -418,19 +420,23 @@ function loadDraft(i){
   goStep(1);          // новый раздел открываем с первого шага
 }
 
-/* Удаление в два нажатия: первое «взводит» кнопку, второе удаляет.
-   Так поиск нельзя стереть случайным касанием. */
+/* Удаление в два нажатия: первое «взводит» кнопку, второе — помечает поиск
+   на удаление. Помеченные поиски убираются из списка сразу, но приложение
+   НЕ закрывается: можно снести несколько подряд, а затем одной кнопкой
+   «Применить» отправить всё боту. Telegram закрывает окно только при отправке,
+   поэтому копим удаления и шлём их разом. */
 let delArmed = false;
+let toDelete = [];          // имена поисков, помеченных на удаление
 
 function deleteProfile(){
   const btn = document.getElementById('delBtn');
-  if (cur === 'new'){ loadDraft(0); return; }
+  if (cur === 'new'){ loadDraft(PROFILES.length ? 0 : 'new'); return; }
   const name = (PROFILES[cur] || {}).name || '';
 
   if (!delArmed){
     delArmed = true;
     btn.classList.add('armed');
-    btn.textContent = `Точно удалить «${name}»? Нажми ещё раз`;
+    btn.textContent = `Точно убрать «${name}»? Нажми ещё раз`;
     setTimeout(() => {          // передумал — кнопка сама остынет
       if (!delArmed) return;
       delArmed = false;
@@ -440,13 +446,38 @@ function deleteProfile(){
     return;
   }
 
+  // Помечаем на удаление и убираем из списка ЛОКАЛЬНО — окно остаётся открытым
+  delArmed = false;
+  if (name) toDelete.push(name);
+  PROFILES.splice(cur, 1);
+  cur = PROFILES.length ? 0 : 'new';
+  loadDraft(cur);
+  renderDeleteBar();
+}
+
+function renderDeleteBar(){
+  const b = document.getElementById('applyDel');
+  const h = document.getElementById('delHint');
+  if (!b) return;
+  if (toDelete.length){
+    b.style.display = '';
+    b.textContent = `Применить: удалить ${toDelete.length} и закрыть`;
+    if (h) h.textContent = 'Помечены на удаление: ' + toDelete.join(', ');
+  } else {
+    b.style.display = 'none';
+    if (h) h.textContent = '';
+  }
+}
+
+function applyDeletes(){
+  if (!toDelete.length) return;
   const w = tgApp();
-  const payload = JSON.stringify({ v:1, action:'delete', profile: cur });
+  const payload = JSON.stringify({ v:1, action:'delete', names: toDelete });
   if (insideTelegram() && w && w.sendData){
     try { w.sendData(payload); return; } catch(e){}
   }
-  document.getElementById('saveHint').textContent =
-    'Это предпросмотр в браузере. Внутри Telegram поиск «' + name + '» был бы удалён.';
+  document.getElementById('delHint').textContent =
+    'Предпросмотр: внутри Telegram удалил бы поиски: ' + toDelete.join(', ');
 }
 
 function onNameInput(){
